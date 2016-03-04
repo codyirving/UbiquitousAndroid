@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.sunshine;
+package com.example.android.sunshine.app;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -28,10 +28,22 @@ import android.graphics.Rect;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
 import android.text.format.Time;
+import android.util.Log;
 import android.view.SurfaceHolder;
+
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.wearable.DataApi;
+import com.google.android.gms.wearable.DataEvent;
+import com.google.android.gms.wearable.DataEventBuffer;
+import com.google.android.gms.wearable.DataMap;
+import com.google.android.gms.wearable.DataMapItem;
+import com.google.android.gms.wearable.Wearable;
 
 import java.lang.ref.WeakReference;
 import java.util.TimeZone;
@@ -53,10 +65,22 @@ public class MyWatchFace extends CanvasWatchFaceService {
      */
     private static final int MSG_UPDATE_TIME = 0;
 
+    GoogleApiClient mGoogleApiClient;
+    @Override
+    public void onCreate() {
+        super.onCreate();
+
+    }
+
+
     @Override
     public Engine onCreateEngine() {
         return new Engine();
     }
+
+
+
+
 
     private static class EngineHandler extends Handler {
         private final WeakReference<MyWatchFace.Engine> mWeakReference;
@@ -78,7 +102,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
         }
     }
 
-    private class Engine extends CanvasWatchFaceService.Engine {
+    private class Engine extends CanvasWatchFaceService.Engine implements DataApi.DataListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
         final Handler mUpdateTimeHandler = new EngineHandler(this);
         boolean mRegisteredTimeZoneReceiver = false;
         Paint mBackgroundPaint;
@@ -99,6 +123,44 @@ public class MyWatchFace extends CanvasWatchFaceService {
          * disable anti-aliasing in ambient mode.
          */
         boolean mLowBitAmbient;
+
+        @Override
+        public void onConnected(@Nullable Bundle bundle) {
+            Log.d("WEAR1:", "watchface onConnected");
+            Wearable.DataApi.addListener(mGoogleApiClient, this);
+            //Wearable.DataApi.getDataItems(googleApiClient).setResultCallback(onConnectedResultCallback);
+        }
+
+        @Override
+        public void onConnectionSuspended(int i) {
+            Log.d("WEAR1:", "watchface onConnectionSuspended");
+            Wearable.DataApi.removeListener(mGoogleApiClient, this);
+            mGoogleApiClient.disconnect();
+        }
+
+        @Override
+        public void onDataChanged(DataEventBuffer dataEvents) {
+            Log.d("WEAR1", "onDataChanged");
+            for(DataEvent dataEvent : dataEvents) {
+                if(dataEvent.getType() == DataEvent.TYPE_CHANGED) {
+                    DataMap dataMap = DataMapItem.fromDataItem(dataEvent.getDataItem()).getDataMap();
+                    String path = dataEvent.getDataItem().getUri().getPath();
+                    if(path.equals("/weather-updates")) {
+                        int high = dataMap.getInt("high");
+                        int low = dataMap.getInt("low");
+                        String description = dataMap.getString("description");
+                        Log.d("WEAR1", "high: " + high + " low: " + low + " description: " + description);
+
+                    }
+                }
+            }
+        }
+
+        @Override
+        public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+            Log.d("WEAR1:", "watchface onConnectionFailed");
+        }
+
 
         @Override
         public void onCreate(SurfaceHolder holder) {
@@ -123,6 +185,16 @@ public class MyWatchFace extends CanvasWatchFaceService {
             mHandPaint.setStrokeCap(Paint.Cap.ROUND);
 
             mTime = new Time();
+
+
+            Log.d("WEAR1", "watchface onCreate()");
+
+            mGoogleApiClient = new GoogleApiClient.Builder(getBaseContext())
+                    .addApi(Wearable.API)
+                    .addConnectionCallbacks(this)
+                    .addOnConnectionFailedListener(this)
+                    .build();
+
         }
 
         @Override
@@ -230,12 +302,15 @@ public class MyWatchFace extends CanvasWatchFaceService {
 
             if (visible) {
                 registerReceiver();
-
+                mGoogleApiClient.connect();
                 // Update time zone in case it changed while we weren't visible.
                 mTime.clear(TimeZone.getDefault().getID());
                 mTime.setToNow();
             } else {
                 unregisterReceiver();
+                if(mGoogleApiClient !=null && mGoogleApiClient.isConnected()) {
+                    mGoogleApiClient.disconnect();
+                }
             }
 
             // Whether the timer should be running depends on whether we're visible (as well as
