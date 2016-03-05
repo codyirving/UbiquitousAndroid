@@ -285,6 +285,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
                 float secX = (float) Math.sin(secRot) * secLength;
                 float secY = (float) -Math.cos(secRot) * secLength;
                 canvas.drawLine(centerX, centerY, centerX + secX, centerY + secY, mHandPaint);
+
             }
 
             float minX = (float) Math.sin(minRot) * minLength;
@@ -294,6 +295,10 @@ public class MyWatchFace extends CanvasWatchFaceService {
             float hrX = (float) Math.sin(hrRot) * hrLength;
             float hrY = (float) -Math.cos(hrRot) * hrLength;
             canvas.drawLine(centerX, centerY, centerX + hrX, centerY + hrY, mHandPaint);
+
+
+
+
         }
 
         @Override
