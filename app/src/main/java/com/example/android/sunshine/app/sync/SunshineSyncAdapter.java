@@ -22,6 +22,7 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.preference.Preference;
 import android.preference.PreferenceManager;
 import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
@@ -407,36 +408,64 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter implements 
 
 
 
+
     GoogleApiClient mGoogleApiClient;
     private void updateWear() {
         // if weather has changed, send data to wear
         Log.d("WEAR1", "updateWear() called");
-        int high = 1;
-        int low = 2;
-        String description = Long.toString(System.currentTimeMillis());
-        PutDataMapRequest putDataMapRequest = PutDataMapRequest.create("/weather-updates");
-        putDataMapRequest.getDataMap().putInt("high", high);
-        putDataMapRequest.getDataMap().putInt("low", low);
-        putDataMapRequest.getDataMap().putString("description", description);
-        PutDataRequest request = putDataMapRequest.asPutDataRequest();
-        request.setUrgent();
-        mGoogleApiClient = new GoogleApiClient.Builder(getContext())
-                .addApi(Wearable.API)
-                .addConnectionCallbacks(this)
-                .addOnConnectionFailedListener(this)
-                .build();
-        mGoogleApiClient.connect();
-        Wearable.DataApi.putDataItem(mGoogleApiClient, request)
-                .setResultCallback(new ResultCallback<DataApi.DataItemResult>() {
-                    @Override
-                    public void onResult(@NonNull DataApi.DataItemResult dataItemResult) {
-                        if(!dataItemResult.getStatus().isSuccess()) {
-                            Log.e("WEAR1", "Failed to send weather update ");
-                        }else {
-                            Log.d("WEAR1", "Successfully sent weather update");
-                        }
-                    }
-                });
+
+        Context context = getContext();
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+
+        String lastNotificationKey = context.getString(R.string.pref_last_notification);
+        long lastSync = prefs.getLong(lastNotificationKey, 0);
+
+
+       // if (System.currentTimeMillis() - lastSync >= DAY_IN_MILLIS) {
+            // Last sync was more than 1 day ago, let's send a notification with the weather.
+            String locationQuery = Utility.getPreferredLocation(context);
+
+            Uri weatherUri = WeatherContract.WeatherEntry.buildWeatherLocationWithDate(locationQuery, System.currentTimeMillis());
+
+            // we'll query our contentProvider, as always
+            Cursor cursor = context.getContentResolver().query(weatherUri, NOTIFY_WEATHER_PROJECTION, null, null, null);
+
+            if (cursor.moveToFirst()) {
+                int weatherId = cursor.getInt(INDEX_WEATHER_ID);
+                double high = cursor.getDouble(INDEX_MAX_TEMP);
+                double low = cursor.getDouble(INDEX_MIN_TEMP);
+             //   String desc = cursor.getString(INDEX_SHORT_DESC);
+
+
+                PutDataMapRequest putDataMapRequest = PutDataMapRequest.create("/weather-updates");
+                putDataMapRequest.getDataMap().putDouble("high", high);
+                putDataMapRequest.getDataMap().putDouble("low", low);
+                putDataMapRequest.getDataMap().putInt("weatherid",weatherId);
+                PutDataRequest request = putDataMapRequest.asPutDataRequest();
+                request.setUrgent();
+                mGoogleApiClient = new GoogleApiClient.Builder(getContext())
+                        .addApi(Wearable.API)
+                        .addConnectionCallbacks(this)
+                        .addOnConnectionFailedListener(this)
+                        .build();
+                mGoogleApiClient.connect();
+                Wearable.DataApi.putDataItem(mGoogleApiClient, request)
+                        .setResultCallback(new ResultCallback<DataApi.DataItemResult>() {
+                            @Override
+                            public void onResult(@NonNull DataApi.DataItemResult dataItemResult) {
+                                if(!dataItemResult.getStatus().isSuccess()) {
+                                    Log.e("WEAR1", "Failed to send weather update ");
+                                }else {
+                                    Log.d("WEAR1", "Successfully sent weather update");
+                                }
+                            }
+                        });
+
+
+            }
+       // }
+
+
     }
 
 

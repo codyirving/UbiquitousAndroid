@@ -21,10 +21,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -118,11 +121,6 @@ public class MyWatchFace extends CanvasWatchFaceService {
         };
         int mTapCount;
 
-        /**
-         * Whether the display supports fewer bits for each color in ambient mode. When true, we
-         * disable anti-aliasing in ambient mode.
-         */
-        boolean mLowBitAmbient;
 
         @Override
         public void onConnected(@Nullable Bundle bundle) {
@@ -138,6 +136,11 @@ public class MyWatchFace extends CanvasWatchFaceService {
             mGoogleApiClient.disconnect();
         }
 
+
+
+
+        double high, low;
+        int weatherId;
         @Override
         public void onDataChanged(DataEventBuffer dataEvents) {
             Log.d("WEAR1", "onDataChanged");
@@ -146,10 +149,10 @@ public class MyWatchFace extends CanvasWatchFaceService {
                     DataMap dataMap = DataMapItem.fromDataItem(dataEvent.getDataItem()).getDataMap();
                     String path = dataEvent.getDataItem().getUri().getPath();
                     if(path.equals("/weather-updates")) {
-                        int high = dataMap.getInt("high");
-                        int low = dataMap.getInt("low");
-                        String description = dataMap.getString("description");
-                        Log.d("WEAR1", "high: " + high + " low: " + low + " description: " + description);
+                        high = dataMap.getDouble("high");
+                        low = dataMap.getDouble("low");
+                        weatherId = dataMap.getInt("weatherid");
+                        Log.d("WEAR1", "high: " + high + " low: " + low + " description: " + weatherId);
 
                     }
                 }
@@ -214,6 +217,11 @@ public class MyWatchFace extends CanvasWatchFaceService {
             super.onTimeTick();
             invalidate();
         }
+        /**
+         * Whether the display supports fewer bits for each color in ambient mode. When true, we
+         * disable anti-aliasing in ambient mode.
+         */
+        boolean mLowBitAmbient;
 
         @Override
         public void onAmbientModeChanged(boolean inAmbientMode) {
@@ -243,7 +251,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
                     // The user has started touching the screen.
                     break;
                 case TAP_TYPE_TOUCH_CANCEL:
-                    // The user has started a different gesture or otherwise cancelled the tap.
+                    // The user has started a different gesture or otherwise cancelled the tap..
                     break;
                 case TAP_TYPE_TAP:
                     // The user has completed the tap gesture.
@@ -254,7 +262,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
             }
             invalidate();
         }
-
+        boolean toggle = true;
         @Override
         public void onDraw(Canvas canvas, Rect bounds) {
             mTime.setToNow();
@@ -286,6 +294,18 @@ public class MyWatchFace extends CanvasWatchFaceService {
                 float secY = (float) -Math.cos(secRot) * secLength;
                 canvas.drawLine(centerX, centerY, centerX + secX, centerY + secY, mHandPaint);
 
+
+                if(toggle) {
+                    Bitmap icon = BitmapFactory.decodeResource(getBaseContext().getResources(), getIconResourceForWeatherCondition(weatherId));
+
+                    if(icon != null) canvas.drawBitmap(icon,0,0,mHandPaint);
+                    canvas.drawText(String.valueOf(high),200,200,mHandPaint);
+                    canvas.drawText(String.valueOf(low),100,100,mHandPaint);
+                    toggle = !toggle;
+                }else {
+
+                    toggle = !toggle;
+                }
             }
 
             float minX = (float) Math.sin(minRot) * minLength;
@@ -299,8 +319,36 @@ public class MyWatchFace extends CanvasWatchFaceService {
 
 
 
-        }
 
+        }
+        public int getIconResourceForWeatherCondition(int weatherId) {
+            // Based on weather code data found at:
+            // http://bugs.openweathermap.org/projects/api/wiki/Weather_Condition_Codes
+            if (weatherId >= 200 && weatherId <= 232) {
+                return R.drawable.art_storm;
+            } else if (weatherId >= 300 && weatherId <= 321) {
+                return R.drawable.art_light_rain;
+            } else if (weatherId >= 500 && weatherId <= 504) {
+                return R.drawable.art_rain;
+            } else if (weatherId == 511) {
+                return R.drawable.art_snow;
+            } else if (weatherId >= 520 && weatherId <= 531) {
+                return R.drawable.art_rain;
+            } else if (weatherId >= 600 && weatherId <= 622) {
+                return R.drawable.art_snow;
+            } else if (weatherId >= 701 && weatherId <= 761) {
+                return R.drawable.art_fog;
+            } else if (weatherId == 761 || weatherId == 781) {
+                return R.drawable.art_storm;
+            } else if (weatherId == 800) {
+                return R.drawable.art_clear;
+            } else if (weatherId == 801) {
+                return R.drawable.art_light_clouds;
+            } else if (weatherId >= 802 && weatherId <= 804) {
+                return R.drawable.art_clouds;
+            }
+            return -1;
+        }
         @Override
         public void onVisibilityChanged(boolean visible) {
             super.onVisibilityChanged(visible);
