@@ -12,10 +12,8 @@
      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
      See the License for the specific language governing permissions and
      limitations under the License.
- -->
-<!-- Master layout. -->
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+ --><!-- Master layout. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical">
@@ -26,15 +24,17 @@
         android:layout_height="?attr/actionBarSize"
         android:background="@android:color/white" />
 
-    <include layout="@layout/detail_today_grid"
+    <include
+        layout="@layout/detail_today_grid"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="3"/>
+        android:layout_weight="3" />
 
-    <include layout="@layout/detail_extras_grid"
+    <include
+        layout="@layout/detail_extras_grid"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="2"/>
+        android:layout_weight="2" />
 
 
 </LinearLayout>

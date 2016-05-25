@@ -141,7 +141,7 @@ public class TodayWidgetIntentService extends IntentService {
             return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, minWidthDp,
                     displayMetrics);
         }
-        return  getResources().getDimensionPixelSize(R.dimen.widget_today_default_width);
+        return getResources().getDimensionPixelSize(R.dimen.widget_today_default_width);
     }
 
     @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1)

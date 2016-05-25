@@ -25,7 +25,13 @@ import java.util.concurrent.ExecutionException;
  */
 @TargetApi(Build.VERSION_CODES.HONEYCOMB)
 public class DetailWidgetRemoteViewsService extends RemoteViewsService {
-    public final String LOG_TAG = DetailWidgetRemoteViewsService.class.getSimpleName();
+    // these indices must match the projection
+    static final int INDEX_WEATHER_ID = 0;
+    static final int INDEX_WEATHER_DATE = 1;
+    static final int INDEX_WEATHER_CONDITION_ID = 2;
+    static final int INDEX_WEATHER_DESC = 3;
+    static final int INDEX_WEATHER_MAX_TEMP = 4;
+    static final int INDEX_WEATHER_MIN_TEMP = 5;
     private static final String[] FORECAST_COLUMNS = {
             WeatherContract.WeatherEntry.TABLE_NAME + "." + WeatherContract.WeatherEntry._ID,
             WeatherContract.WeatherEntry.COLUMN_DATE,
@@ -34,13 +40,7 @@ public class DetailWidgetRemoteViewsService extends RemoteViewsService {
             WeatherContract.WeatherEntry.COLUMN_MAX_TEMP,
             WeatherContract.WeatherEntry.COLUMN_MIN_TEMP
     };
-    // these indices must match the projection
-    static final int INDEX_WEATHER_ID = 0;
-    static final int INDEX_WEATHER_DATE = 1;
-    static final int INDEX_WEATHER_CONDITION_ID = 2;
-    static final int INDEX_WEATHER_DESC = 3;
-    static final int INDEX_WEATHER_MAX_TEMP = 4;
-    static final int INDEX_WEATHER_MIN_TEMP = 5;
+    public final String LOG_TAG = DetailWidgetRemoteViewsService.class.getSimpleName();
 
     @Override
     public RemoteViewsFactory onGetViewFactory(Intent intent) {
@@ -97,7 +97,7 @@ public class DetailWidgetRemoteViewsService extends RemoteViewsService {
                 int weatherId = data.getInt(INDEX_WEATHER_CONDITION_ID);
                 int weatherArtResourceId = Utility.getIconResourceForWeatherCondition(weatherId);
                 Bitmap weatherArtImage = null;
-                if ( !Utility.usingLocalGraphics(DetailWidgetRemoteViewsService.this) ) {
+                if (!Utility.usingLocalGraphics(DetailWidgetRemoteViewsService.this)) {
                     String weatherArtResourceUrl = Utility.getArtUrlForWeatherCondition(
                             DetailWidgetRemoteViewsService.this, weatherId);
                     try {

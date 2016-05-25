@@ -18,6 +18,7 @@ package com.example.android.sunshine.app;
 import android.annotation.TargetApi;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.ListPreference;
@@ -26,11 +27,15 @@ import android.preference.PreferenceActivity;
 import android.preference.PreferenceManager;
 import android.support.design.widget.Snackbar;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
+
 import com.example.android.sunshine.app.data.WeatherContract;
 import com.example.android.sunshine.app.sync.SunshineSyncAdapter;
+import com.google.android.gms.appindexing.Action;
+import com.google.android.gms.appindexing.AppIndex;
+import com.google.android.gms.appindexing.Thing;
+import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.places.Place;
 import com.google.android.gms.location.places.ui.PlacePicker;
 import com.google.android.gms.maps.model.LatLng;
@@ -47,6 +52,11 @@ public class SettingsActivity extends PreferenceActivity
         implements Preference.OnPreferenceChangeListener, SharedPreferences.OnSharedPreferenceChangeListener {
     protected final static int PLACE_PICKER_REQUEST = 9090;
     private ImageView mAttribution;
+    /**
+     * ATTENTION: This was auto-generated to implement the App Indexing API.
+     * See https://g.co/AppIndexing/AndroidStudio for more information.
+     */
+    private GoogleApiClient client;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -72,6 +82,9 @@ public class SettingsActivity extends PreferenceActivity
 
             setListFooter(mAttribution);
         }
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
     }
 
     // Registers a shared preference change listener that gets notified when preferences change
@@ -153,7 +166,7 @@ public class SettingsActivity extends PreferenceActivity
     // start our synchronization here
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-        if ( key.equals(getString(R.string.pref_location_key)) ) {
+        if (key.equals(getString(R.string.pref_location_key))) {
             // we've changed the location
             // Wipe out any potential PlacePicker latlng values so that we can use this text entry.
             SharedPreferences.Editor editor = sharedPreferences.edit();
@@ -168,14 +181,14 @@ public class SettingsActivity extends PreferenceActivity
 
             Utility.resetLocationStatus(this);
             SunshineSyncAdapter.syncImmediately(this);
-        } else if ( key.equals(getString(R.string.pref_units_key)) ) {
+        } else if (key.equals(getString(R.string.pref_units_key))) {
             // units have changed. update lists of weather entries accordingly
             getContentResolver().notifyChange(WeatherContract.WeatherEntry.CONTENT_URI, null);
-        } else if ( key.equals(getString(R.string.pref_location_status_key)) ) {
+        } else if (key.equals(getString(R.string.pref_location_status_key))) {
             // our location status has changed.  Update the summary accordingly
             Preference locationPreference = findPreference(getString(R.string.pref_location_key));
             bindPreferenceSummaryToValue(locationPreference);
-        } else if ( key.equals(getString(R.string.pref_art_pack_key)) ) {
+        } else if (key.equals(getString(R.string.pref_art_pack_key))) {
             // art pack have changed. update lists of weather entries accordingly
             getContentResolver().notifyChange(WeatherContract.WeatherEntry.CONTENT_URI, null);
         }
@@ -200,7 +213,7 @@ public class SettingsActivity extends PreferenceActivity
                 // If the provided place doesn't have an address, we'll form a display-friendly
                 // string from the latlng values.
                 if (TextUtils.isEmpty(address)) {
-                    address = String.format("(%.2f, %.2f)",latLong.latitude, latLong.longitude);
+                    address = String.format("(%.2f, %.2f)", latLong.latitude, latLong.longitude);
                 }
 
                 SharedPreferences sharedPreferences =
@@ -215,7 +228,7 @@ public class SettingsActivity extends PreferenceActivity
                         (float) latLong.latitude);
                 editor.putFloat(getString(R.string.pref_location_longitude),
                         (float) latLong.longitude);
-                editor.commit();
+                editor.apply();
 
                 // Tell the SyncAdapter that we've changed the location, so that we can update
                 // our UI with new values. We need to do this manually because we are responding
@@ -240,5 +253,41 @@ public class SettingsActivity extends PreferenceActivity
         } else {
             super.onActivityResult(requestCode, resultCode, data);
         }
+    }
+
+    /**
+     * ATTENTION: This was auto-generated to implement the App Indexing API.
+     * See https://g.co/AppIndexing/AndroidStudio for more information.
+     */
+    public Action getIndexApiAction() {
+        Thing object = new Thing.Builder()
+                .setName("Settings Page") // TODO: Define a title for the content shown.
+                // TODO: Make sure this auto-generated URL is correct.
+                .setUrl(Uri.parse("http://host/path"))
+                .build();
+        return new Action.Builder(Action.TYPE_VIEW)
+                .setObject(object)
+                .setActionStatus(Action.STATUS_TYPE_COMPLETED)
+                .build();
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client.connect();
+        AppIndex.AppIndexApi.start(client, getIndexApiAction());
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        AppIndex.AppIndexApi.end(client, getIndexApiAction());
+        client.disconnect();
     }
 }

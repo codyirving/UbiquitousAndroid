@@ -36,13 +36,11 @@ import org.json.JSONObject;
 
 public class MyGcmListenerService extends GcmListenerService {
 
+    public static final int NOTIFICATION_ID = 1;
     private static final String TAG = "MyGcmListenerService";
-
     private static final String EXTRA_DATA = "data";
     private static final String EXTRA_WEATHER = "weather";
     private static final String EXTRA_LOCATION = "location";
-
-    public static final int NOTIFICATION_ID = 1;
 
     /**
      * Called when message is received.
@@ -80,8 +78,8 @@ public class MyGcmListenerService extends GcmListenerService {
     }
 
     /**
-     *  Put the message into a notification and post it.
-     *  This is just one simple example of what you might choose to do with a GCM message.
+     * Put the message into a notification and post it.
+     * This is just one simple example of what you might choose to do with a GCM message.
      *
      * @param message The alert message to be posted.
      */

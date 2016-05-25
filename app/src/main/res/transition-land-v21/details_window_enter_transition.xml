@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
      Copyright (C) 2015 The Android Open Source Project
 
      Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,12 +14,12 @@
      limitations under the License.
  -->
 <transitionSet xmlns:android="http://schemas.android.com/apk/res/android"
-    android:transitionOrdering="together"
-    android:duration="250">
+    android:duration="250"
+    android:transitionOrdering="together">
     <fade xmlns:android="http://schemas.android.com/apk/res/android">
         <targets>
-            <target android:excludeId="@android:id/statusBarBackground"/>
-            <target android:excludeId="@android:id/navigationBarBackground"/>
+            <target android:excludeId="@android:id/statusBarBackground" />
+            <target android:excludeId="@android:id/navigationBarBackground" />
         </targets>
     </fade>
     <slide android:slideEdge="top">

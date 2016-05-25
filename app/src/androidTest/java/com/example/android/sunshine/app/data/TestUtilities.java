@@ -111,6 +111,10 @@ public class TestUtilities extends AndroidTestCase {
         return locationRowId;
     }
 
+    static TestContentObserver getTestContentObserver() {
+        return TestContentObserver.getTestContentObserver();
+    }
+
     /*
         Students: The functions we provide inside of TestProvider use this utility class to test
         the ContentObserver callbacks using the PollingCheck class that we grabbed from the Android
@@ -123,15 +127,15 @@ public class TestUtilities extends AndroidTestCase {
         final HandlerThread mHT;
         boolean mContentChanged;
 
+        private TestContentObserver(HandlerThread ht) {
+            super(new Handler(ht.getLooper()));
+            mHT = ht;
+        }
+
         static TestContentObserver getTestContentObserver() {
             HandlerThread ht = new HandlerThread("ContentObserverThread");
             ht.start();
             return new TestContentObserver(ht);
-        }
-
-        private TestContentObserver(HandlerThread ht) {
-            super(new Handler(ht.getLooper()));
-            mHT = ht;
         }
 
         // On earlier versions of Android, this onChange method is called
@@ -158,9 +162,5 @@ public class TestUtilities extends AndroidTestCase {
             }.run();
             mHT.quit();
         }
-    }
-
-    static TestContentObserver getTestContentObserver() {
-        return TestContentObserver.getTestContentObserver();
     }
 }

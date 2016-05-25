@@ -20,6 +20,8 @@ import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.ActivityOptionsCompat;
 import android.support.v4.util.Pair;
@@ -35,13 +37,21 @@ import com.example.android.sunshine.app.gcm.RegistrationIntentService;
 import com.example.android.sunshine.app.sync.SunshineSyncAdapter;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.wearable.DataApi;
+import com.google.android.gms.wearable.DataEvent;
+import com.google.android.gms.wearable.DataEventBuffer;
+import com.google.android.gms.wearable.DataMap;
+import com.google.android.gms.wearable.DataMapItem;
+import com.google.android.gms.wearable.Wearable;
 
-public class MainActivity extends AppCompatActivity implements ForecastFragment.Callback {
+public class MainActivity extends AppCompatActivity implements ForecastFragment.Callback, DataApi.DataListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
 
-    private final String LOG_TAG = MainActivity.class.getSimpleName();
+    public static final String SENT_TOKEN_TO_SERVER = "sentTokenToServer";
     private static final String DETAILFRAGMENT_TAG = "DFTAG";
     private final static int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
-    public static final String SENT_TOKEN_TO_SERVER = "sentTokenToServer";
+    private final String LOG_TAG = MainActivity.class.getSimpleName();
+    GoogleApiClient mGoogleApiClient;
 
     private boolean mTwoPane;
     private String mLocation;
@@ -53,7 +63,7 @@ public class MainActivity extends AppCompatActivity implements ForecastFragment.
         Uri contentUri = getIntent() != null ? getIntent().getData() : null;
 
         setContentView(R.layout.activity_main);
-        Toolbar toolbar = (Toolbar)findViewById(R.id.toolbar);
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayShowTitleEnabled(false);
 
@@ -81,7 +91,7 @@ public class MainActivity extends AppCompatActivity implements ForecastFragment.
             getSupportActionBar().setElevation(0f);
         }
 
-        ForecastFragment forecastFragment =  ((ForecastFragment)getSupportFragmentManager()
+        ForecastFragment forecastFragment = ((ForecastFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.fragment_forecast));
         forecastFragment.setUseTodayLayout(!mTwoPane);
         if (contentUri != null) {
@@ -107,6 +117,13 @@ public class MainActivity extends AppCompatActivity implements ForecastFragment.
                 startService(intent);
             }
         }
+
+        mGoogleApiClient = new GoogleApiClient.Builder(getBaseContext())
+                .addApi(Wearable.API)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .build();
+        mGoogleApiClient.connect();
     }
 
     @Override
@@ -135,15 +152,15 @@ public class MainActivity extends AppCompatActivity implements ForecastFragment.
     @Override
     protected void onResume() {
         super.onResume();
-        String location = Utility.getPreferredLocation( this );
+        String location = Utility.getPreferredLocation(this);
         // update the location in our second pane using the fragment manager
-            if (location != null && !location.equals(mLocation)) {
-            ForecastFragment ff = (ForecastFragment)getSupportFragmentManager().findFragmentById(R.id.fragment_forecast);
-            if ( null != ff ) {
+        if (location != null && !location.equals(mLocation)) {
+            ForecastFragment ff = (ForecastFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_forecast);
+            if (null != ff) {
                 ff.onLocationChanged();
             }
-            DetailFragment df = (DetailFragment)getSupportFragmentManager().findFragmentByTag(DETAILFRAGMENT_TAG);
-            if ( null != df ) {
+            DetailFragment df = (DetailFragment) getSupportFragmentManager().findFragmentByTag(DETAILFRAGMENT_TAG);
+            if (null != df) {
                 df.onLocationChanged(location);
             }
             mLocation = location;
@@ -176,6 +193,7 @@ public class MainActivity extends AppCompatActivity implements ForecastFragment.
         }
     }
 
+
     /**
      * Check the device to make sure it has the Google Play Services APK. If
      * it doesn't, display a dialog that allows users to download the APK from
@@ -195,5 +213,36 @@ public class MainActivity extends AppCompatActivity implements ForecastFragment.
             return false;
         }
         return true;
+    }
+
+    @Override
+    public void onDataChanged(DataEventBuffer dataEvents) {
+
+        for (DataEvent dataEvent : dataEvents) {
+            if (dataEvent.getType() == DataEvent.TYPE_CHANGED) {
+                DataMap dataMap = DataMapItem.fromDataItem(dataEvent.getDataItem()).getDataMap();
+                String path = dataEvent.getDataItem().getUri().getPath();
+                if (path.equals("/send-update")) {
+                    Boolean aBoolean = dataMap.getBoolean("needsUpdate");
+                    if (aBoolean) SunshineSyncAdapter.syncImmediately(this);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void onConnected(@Nullable Bundle bundle) {
+        Wearable.DataApi.addListener(mGoogleApiClient, this);
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+        Wearable.DataApi.removeListener(mGoogleApiClient, this);
+        mGoogleApiClient.disconnect();
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+
     }
 }

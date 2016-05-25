@@ -19,4 +19,4 @@
     android:name="com.example.android.sunshine.app.ForecastFragment"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    app:sharedElementTransitions="true"/>
+    app:sharedElementTransitions="true" />

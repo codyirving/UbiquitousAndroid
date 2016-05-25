@@ -15,10 +15,8 @@
  */
 package com.example.android.sunshine.app;
 
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcel;
-import android.os.Parcelable;
 import android.support.v4.util.LongSparseArray;
 import android.support.v4.view.ViewCompat;
 import android.support.v7.widget.RecyclerView;
@@ -32,10 +30,25 @@ import android.widget.Checkable;
  * doesn't take advantage of new adapter features to track changes in the underlying data.
  */
 public class ItemChoiceManager {
+    /**
+     * How many positions in either direction we will search to try to
+     * find a checked item with a stable ID that moved position across
+     * a data set change. If the item isn't found it will be unselected.
+     */
+    private static final int CHECK_POSITION_SEARCH_DISTANCE = 20;
     private final String LOG_TAG = MainActivity.class.getSimpleName();
     private final String SELECTED_ITEMS_KEY = "SIK";
+    /**
+     * Running state of which positions are currently checked
+     */
+    SparseBooleanArray mCheckStates = new SparseBooleanArray();
+    /**
+     * Running state of which IDs are currently checked.
+     * If there is a value for a given key, the checked state for that ID is true
+     * and the value holds the last known position in the adapter for that id.
+     */
+    LongSparseArray<Integer> mCheckedIdStates = new LongSparseArray<Integer>();
     private int mChoiceMode;
-
     private RecyclerView.Adapter mAdapter;
     private RecyclerView.AdapterDataObserver mAdapterDataObserver = new RecyclerView.AdapterDataObserver() {
         @Override
@@ -49,30 +62,9 @@ public class ItemChoiceManager {
     private ItemChoiceManager() {
     }
 
-    ;
-
     public ItemChoiceManager(RecyclerView.Adapter adapter) {
         mAdapter = adapter;
     }
-
-    /**
-     * How many positions in either direction we will search to try to
-     * find a checked item with a stable ID that moved position across
-     * a data set change. If the item isn't found it will be unselected.
-     */
-    private static final int CHECK_POSITION_SEARCH_DISTANCE = 20;
-
-    /**
-     * Running state of which positions are currently checked
-     */
-    SparseBooleanArray mCheckStates = new SparseBooleanArray();
-
-    /**
-     * Running state of which IDs are currently checked.
-     * If there is a value for a given key, the checked state for that ID is true
-     * and the value holds the last known position in the adapter for that id.
-     */
-    LongSparseArray<Integer> mCheckedIdStates = new LongSparseArray<Integer>();
 
     public void onClick(RecyclerView.ViewHolder vh) {
         if (mChoiceMode == AbsListView.CHOICE_MODE_NONE)
@@ -198,14 +190,14 @@ public class ItemChoiceManager {
 
     public void onRestoreInstanceState(Bundle savedInstanceState) {
         byte[] states = savedInstanceState.getByteArray(SELECTED_ITEMS_KEY);
-        if ( null != states ) {
+        if (null != states) {
             Parcel inParcel = Parcel.obtain();
             inParcel.unmarshall(states, 0, states.length);
             inParcel.setDataPosition(0);
             mCheckStates = inParcel.readSparseBooleanArray();
             final int numStates = inParcel.readInt();
             mCheckedIdStates.clear();
-            for (int i=0; i<numStates; i++) {
+            for (int i = 0; i < numStates; i++) {
                 final long key = inParcel.readLong();
                 final int value = inParcel.readInt();
                 mCheckedIdStates.put(key, value);
@@ -218,7 +210,7 @@ public class ItemChoiceManager {
         outParcel.writeSparseBooleanArray(mCheckStates);
         final int numStates = mCheckedIdStates.size();
         outParcel.writeInt(numStates);
-        for (int i=0; i<numStates; i++) {
+        for (int i = 0; i < numStates; i++) {
             outParcel.writeLong(mCheckedIdStates.keyAt(i));
             outParcel.writeInt(mCheckedIdStates.valueAt(i));
         }
@@ -228,7 +220,7 @@ public class ItemChoiceManager {
     }
 
     public int getSelectedItemPosition() {
-        if ( mCheckStates.size() == 0 ) {
+        if (mCheckStates.size() == 0) {
             return RecyclerView.NO_POSITION;
         } else {
             return mCheckStates.keyAt(0);

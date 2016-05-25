@@ -26,7 +26,7 @@ import com.example.android.sunshine.app.sync.SunshineSyncAdapter;
 
 /**
  * Provider for a horizontally expandable widget showing today's weather.
- *
+ * <p>
  * Delegates widget updating to {@link TodayWidgetIntentService} to ensure that
  * data retrieval is done on a background thread
  */

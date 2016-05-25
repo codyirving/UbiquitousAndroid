@@ -16,6 +16,7 @@
 
 package com.example.android.sunshine.app;
 
+
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -27,7 +28,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import android.graphics.drawable.Drawable;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -36,21 +37,25 @@ import android.support.annotation.Nullable;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
 import android.text.format.Time;
-import android.util.Log;
 import android.view.SurfaceHolder;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.ResultCallbacks;
+import com.google.android.gms.common.api.Status;
 import com.google.android.gms.wearable.DataApi;
 import com.google.android.gms.wearable.DataEvent;
 import com.google.android.gms.wearable.DataEventBuffer;
 import com.google.android.gms.wearable.DataMap;
 import com.google.android.gms.wearable.DataMapItem;
+import com.google.android.gms.wearable.PutDataMapRequest;
 import com.google.android.gms.wearable.Wearable;
 
 import java.lang.ref.WeakReference;
+import java.util.GregorianCalendar;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
+
 
 /**
  * Analog watch face with a ticking second hand. In ambient mode, the second hand isn't shown. On
@@ -69,6 +74,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
     private static final int MSG_UPDATE_TIME = 0;
 
     GoogleApiClient mGoogleApiClient;
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -80,10 +86,6 @@ public class MyWatchFace extends CanvasWatchFaceService {
     public Engine onCreateEngine() {
         return new Engine();
     }
-
-
-
-
 
     private static class EngineHandler extends Handler {
         private final WeakReference<MyWatchFace.Engine> mWeakReference;
@@ -105,7 +107,8 @@ public class MyWatchFace extends CanvasWatchFaceService {
         }
     }
 
-    private class Engine extends CanvasWatchFaceService.Engine implements DataApi.DataListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
+    private class Engine extends CanvasWatchFaceService.Engine implements DataApi.DataListener,
+            GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
         final Handler mUpdateTimeHandler = new EngineHandler(this);
         boolean mRegisteredTimeZoneReceiver = false;
         Paint mBackgroundPaint;
@@ -120,39 +123,59 @@ public class MyWatchFace extends CanvasWatchFaceService {
             }
         };
         int mTapCount;
-
+        String highString, lowString;
+        int weatherId;
+        /**
+         * Whether the display supports fewer bits for each color in ambient mode. When true, we
+         * disable anti-aliasing in ambient mode.
+         */
+        boolean mLowBitAmbient;
+        boolean digitalToggleBool;
+        private Typeface WATCH_TEXT_TYPEFACE = Typeface.create(Typeface.SERIF, Typeface.NORMAL);
 
         @Override
         public void onConnected(@Nullable Bundle bundle) {
-            Log.d("WEAR1:", "watchface onConnected");
+
             Wearable.DataApi.addListener(mGoogleApiClient, this);
-            //Wearable.DataApi.getDataItems(googleApiClient).setResultCallback(onConnectedResultCallback);
+            PutDataMapRequest putDataMapRequest = PutDataMapRequest.create("/send-update");
+            putDataMapRequest.getDataMap().putBoolean("needsUpdate", true);
+            final long randomLong = GregorianCalendar.getInstance().getTimeInMillis();
+            putDataMapRequest.getDataMap().putLong("randomLong", randomLong);
+            putDataMapRequest.setUrgent();
+            Wearable.DataApi.putDataItem(mGoogleApiClient, putDataMapRequest.asPutDataRequest())
+                    .setResultCallback(new ResultCallbacks<DataApi.DataItemResult>() {
+                        @Override
+                        public void onSuccess(@NonNull DataApi.DataItemResult dataItemResult) {
+
+                        }
+
+                        @Override
+                        public void onFailure(@NonNull Status status) {
+
+                        }
+            });
         }
 
         @Override
         public void onConnectionSuspended(int i) {
-            Log.d("WEAR1:", "watchface onConnectionSuspended");
+
             Wearable.DataApi.removeListener(mGoogleApiClient, this);
             mGoogleApiClient.disconnect();
         }
 
-
-
-
-        double high, low;
-        int weatherId;
         @Override
         public void onDataChanged(DataEventBuffer dataEvents) {
-            Log.d("WEAR1", "onDataChanged");
-            for(DataEvent dataEvent : dataEvents) {
-                if(dataEvent.getType() == DataEvent.TYPE_CHANGED) {
-                    DataMap dataMap = DataMapItem.fromDataItem(dataEvent.getDataItem()).getDataMap();
+
+            for (DataEvent dataEvent : dataEvents) {
+                if (dataEvent.getType() == DataEvent.TYPE_CHANGED) {
+                    DataMap dataMap = DataMapItem
+                            .fromDataItem(dataEvent.getDataItem())
+                            .getDataMap();
                     String path = dataEvent.getDataItem().getUri().getPath();
-                    if(path.equals("/weather-updates")) {
-                        high = dataMap.getDouble("high");
-                        low = dataMap.getDouble("low");
+                    if (path.equals("/weather-updates")) {
+                        highString = dataMap.getString("high");
+                        lowString = dataMap.getString("low");
                         weatherId = dataMap.getInt("weatherid");
-                        Log.d("WEAR1", "high: " + high + " low: " + low + " description: " + weatherId);
 
                     }
                 }
@@ -161,9 +184,8 @@ public class MyWatchFace extends CanvasWatchFaceService {
 
         @Override
         public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-            Log.d("WEAR1:", "watchface onConnectionFailed");
-        }
 
+        }
 
         @Override
         public void onCreate(SurfaceHolder holder) {
@@ -186,18 +208,20 @@ public class MyWatchFace extends CanvasWatchFaceService {
             mHandPaint.setStrokeWidth(resources.getDimension(R.dimen.analog_hand_stroke));
             mHandPaint.setAntiAlias(true);
             mHandPaint.setStrokeCap(Paint.Cap.ROUND);
-
+            mHandPaint.setTypeface(WATCH_TEXT_TYPEFACE);
+            mHandPaint.setTextSize(20);
             mTime = new Time();
 
-
-            Log.d("WEAR1", "watchface onCreate()");
-
-            mGoogleApiClient = new GoogleApiClient.Builder(getBaseContext())
-                    .addApi(Wearable.API)
-                    .addConnectionCallbacks(this)
-                    .addOnConnectionFailedListener(this)
-                    .build();
-
+            if (mGoogleApiClient == null) {
+                mGoogleApiClient = new GoogleApiClient.Builder(getBaseContext())
+                        .addApi(Wearable.API)
+                        .addConnectionCallbacks(this)
+                        .addOnConnectionFailedListener(this)
+                        .build();
+            }
+            if (!mGoogleApiClient.isConnected() && !mGoogleApiClient.isConnecting()) {
+                mGoogleApiClient.connect();
+            }
         }
 
         @Override
@@ -217,11 +241,6 @@ public class MyWatchFace extends CanvasWatchFaceService {
             super.onTimeTick();
             invalidate();
         }
-        /**
-         * Whether the display supports fewer bits for each color in ambient mode. When true, we
-         * disable anti-aliasing in ambient mode.
-         */
-        boolean mLowBitAmbient;
 
         @Override
         public void onAmbientModeChanged(boolean inAmbientMode) {
@@ -258,11 +277,21 @@ public class MyWatchFace extends CanvasWatchFaceService {
                     mTapCount++;
                     mBackgroundPaint.setColor(resources.getColor(mTapCount % 2 == 0 ?
                             R.color.background : R.color.background2));
+                    digitalToggleBool = !digitalToggleBool;
                     break;
             }
             invalidate();
         }
-        boolean toggle = true;
+
+        private String getHourString() {
+            if (mTime.hour % 12 == 0)
+                return "12";
+            else if (mTime.hour <= 12)
+                return String.valueOf(mTime.hour);
+            else
+                return String.valueOf(mTime.hour - 12);
+        }
+
         @Override
         public void onDraw(Canvas canvas, Rect bounds) {
             mTime.setToNow();
@@ -274,53 +303,42 @@ public class MyWatchFace extends CanvasWatchFaceService {
                 canvas.drawRect(0, 0, canvas.getWidth(), canvas.getHeight(), mBackgroundPaint);
             }
 
+
             // Find the center. Ignore the window insets so that, on round watches with a
             // "chin", the watch face is centered on the entire screen, not just the usable
             // portion.
             float centerX = bounds.width() / 2f;
             float centerY = bounds.height() / 2f;
-
-            float secRot = mTime.second / 30f * (float) Math.PI;
-            int minutes = mTime.minute;
-            float minRot = minutes / 30f * (float) Math.PI;
-            float hrRot = ((mTime.hour + (minutes / 60f)) / 6f) * (float) Math.PI;
-
-            float secLength = centerX - 20;
-            float minLength = centerX - 40;
-            float hrLength = centerX - 80;
-
-            if (!mAmbient) {
-                float secX = (float) Math.sin(secRot) * secLength;
-                float secY = (float) -Math.cos(secRot) * secLength;
-                canvas.drawLine(centerX, centerY, centerX + secX, centerY + secY, mHandPaint);
+            float thirdBottomY = bounds.height() * (2 / 3f);
 
 
-                if(toggle) {
-                    Bitmap icon = BitmapFactory.decodeResource(getBaseContext().getResources(), getIconResourceForWeatherCondition(weatherId));
-
-                    if(icon != null) canvas.drawBitmap(icon,0,0,mHandPaint);
-                    canvas.drawText(String.valueOf(high),200,200,mHandPaint);
-                    canvas.drawText(String.valueOf(low),100,100,mHandPaint);
-                    toggle = !toggle;
-                }else {
-
-                    toggle = !toggle;
+            String timeText = getHourString() + ":" + String.format("%02d", mTime.minute);
+            if (isInAmbientMode()) {
+                timeText += (mTime.hour < 12) ? "AM" : "PM";
+            } else {
+                mHandPaint.setTextSize(20);
+                timeText += String.format(":%02d", mTime.second);
+                Bitmap icon = BitmapFactory.decodeResource(getBaseContext().getResources(), getIconResourceForWeatherCondition(weatherId));
+                if (icon != null && icon.getWidth() > bounds.width() / 4) {
+                    Rect rect = new Rect((int) centerX - icon.getWidth() / 4, (int) centerY, ((int) centerX - icon.getWidth() / 4) + icon.getWidth() / 2, (int) centerY + icon.getHeight() / 2);
+                    canvas.drawBitmap(icon, null, rect, mHandPaint);
+                } else if (icon != null)
+                    canvas.drawBitmap(icon, centerX - icon.getWidth() / 2, centerY, mHandPaint);
+                if (highString != null && lowString != null) {
+                    String highText = "high: " + highString;
+                    String lowText = "low: " + lowString;
+                    canvas.drawText(highText, 20f, thirdBottomY, mHandPaint);
+                    canvas.drawText(lowText, bounds.width() - mHandPaint.measureText(highText) - 20f, thirdBottomY, mHandPaint);
                 }
+
+
             }
-
-            float minX = (float) Math.sin(minRot) * minLength;
-            float minY = (float) -Math.cos(minRot) * minLength;
-            canvas.drawLine(centerX, centerY, centerX + minX, centerY + minY, mHandPaint);
-
-            float hrX = (float) Math.sin(hrRot) * hrLength;
-            float hrY = (float) -Math.cos(hrRot) * hrLength;
-            canvas.drawLine(centerX, centerY, centerX + hrX, centerY + hrY, mHandPaint);
-
-
-
+            mHandPaint.setTextSize(40);
+            canvas.drawText(timeText, centerX - mHandPaint.measureText(timeText) / 2, centerY, mHandPaint);
 
 
         }
+
         public int getIconResourceForWeatherCondition(int weatherId) {
             // Based on weather code data found at:
             // http://bugs.openweathermap.org/projects/api/wiki/Weather_Condition_Codes
@@ -349,6 +367,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
             }
             return -1;
         }
+
         @Override
         public void onVisibilityChanged(boolean visible) {
             super.onVisibilityChanged(visible);
@@ -360,8 +379,9 @@ public class MyWatchFace extends CanvasWatchFaceService {
                 mTime.clear(TimeZone.getDefault().getID());
                 mTime.setToNow();
             } else {
+
                 unregisterReceiver();
-                if(mGoogleApiClient !=null && mGoogleApiClient.isConnected()) {
+                if (mGoogleApiClient != null && mGoogleApiClient.isConnected()) {
                     mGoogleApiClient.disconnect();
                 }
             }
